@@ -29,9 +29,10 @@ const USERModel = mongoose.model("user", userSchema);
 
 //schema/model for exercises
 const exerciseSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: false },
   description: { type: String, required: true, unique: false },
   duration: { type: Number, required: true, unique: false },
-  date: { type: String, required: false, unique: false },
+  date: { type: Date, required: false, unique: false },
 });
 const EModel = mongoose.model("exercise", exerciseSchema);
 
@@ -50,37 +51,69 @@ app.post("/api/users", (req, res) => {
         username: username,
       });
       newUser.save();
-      console.log(newUser)
-      res.json({ username: newUser.username, _id: newUser._id.toHexString() })
+      console.log({
+        username: newUser.username,
+        _id: newUser._id.toHexString(),
+      });
+      res.json({ username: newUser.username, _id: newUser._id.toHexString() });
     }
   });
 });
 
 // post request to exercises
 app.post("/api/users/:_id/exercises", (req, res) => {
-  // find user by id
   const id = req.params._id;
-  console.log(id, "this")
-
+  // create date Object up here
   USERModel.findById(id).then((objFound) => {
     if (objFound) {
-       respObj = {
-         username: objFound.username,
-         description: req.body.description,
-         duration: req.body.duration,
-         date: new Date(req.body.date).toDateString(), 
-         _id: objFound._id.toHexString()
-       };
-       console.log(objFound, "objfound")
-      const newExercise = new EModel({
-        description: req.body.description,
-        duration: req.body.duration,
-        date: new Date(req.body.date).toDateString()
-      }).save();
-      res.json(respObj)
+      if (!req.body.date) {
+        console.log("no date");
+        respObj = {
+          username: objFound.username,
+          description: req.body.description,
+          duration: parseInt(req.body.duration),
+          date: new Date().toDateString(),
+          _id: objFound._id.toHexString(),
+        };
+        const newExercise = new EModel({
+          username: objFound.username,
+          description: req.body.description,
+          duration: req.body.duration,
+          date: new Date().toDateString(),
+        }).save();
+      } else {
+        console.log("date");
+        respObj = {
+          username: objFound.username,
+          description: req.body.description,
+          duration: parseInt(req.body.duration),
+          date: new Date(req.body.date).toDateString(),
+          _id: objFound._id.toHexString(),
+        };
+        const newExercise = new EModel({
+          username: objFound.username,
+          description: req.body.description,
+          duration: req.body.duration,
+          date: new Date(req.body.date).toDateString(),
+        }).save();
+      }
+      res.json(respObj);
     } else {
       console.log("not found");
     }
+  });
+});
+
+// get request for logs
+app.get("/api/users/:_id/logs", (req, res) => {
+  const id = req.params._id;
+  // find user
+  USERModel.findById(id).then((userObj) => {
+    // get all exercise objects from user
+    userToFind = userObj.username;
+    EModel.find({ username: userToFind }).then((exercises) => {
+      res.json({ username: userToFind, count: exercises.length, _id: id, log: exercises});
+    });
   });
 });
 
