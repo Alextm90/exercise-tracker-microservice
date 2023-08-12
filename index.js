@@ -111,9 +111,23 @@ app.get("/api/users/:_id/logs", (req, res) => {
   USERModel.findById(id).then((userObj) => {
     // get all exercise objects from user
     userToFind = userObj.username;
-    EModel.find({ username: userToFind }).then((exercises) => {
-      res.json({ username: userToFind, count: exercises.length, _id: id, log: exercises});
-    });
+    EModel.find({ username: userToFind })
+      .lean()
+      .then((exercises) => {
+        exercises.forEach((obj) => {
+          delete obj.username;
+          delete obj._id
+          delete obj.__v
+           // turn into correct date format
+           obj.date = obj.date.toDateString()
+        });
+        res.json({
+          username: userToFind,
+          count: exercises.length,
+          _id: id,
+          log: exercises,
+        });
+      });
   });
 });
 
