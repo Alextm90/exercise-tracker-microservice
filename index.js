@@ -1,3 +1,5 @@
+// newest
+
 // Requirements
 const express = require("express");
 const app = express();
@@ -59,22 +61,22 @@ app.post("/api/users", (req, res) => {
 // post request to exercises
 app.post("/api/users/:_id/exercises", (req, res) => {
   const id = req.params._id;
-  USERModel.findById(id).then((objFound) => {
-    if (objFound) {
+  USERModel.findById(id).then((userFound) => {
+    if (userFound) {
       if (!req.body.date) {
         date = new Date().toDateString();
       } else {
         date = new Date(req.body.date).toDateString();
       }
       respObj = {
-        username: objFound.username,
+        username: userFound.username,
         description: req.body.description,
         duration: parseInt(req.body.duration),
         date: date,
-        _id: objFound._id.toHexString(),
+        _id: userFound._id.toHexString(),
       };
       const newExercise = new EModel({
-        username: objFound.username,
+        username: userFound.username,
         description: req.body.description,
         duration: req.body.duration,
         date: date,
@@ -88,28 +90,41 @@ app.post("/api/users/:_id/exercises", (req, res) => {
 
 // get request for logs
 app.get("/api/users/:_id/logs", (req, res) => {
+  const { from, to, limit } = req.query;
   const id = req.params._id;
   // find user
   USERModel.findById(id).then((userObj) => {
-    console.log(userObj)
     // get all exercise objects from user
     userToFind = userObj.username;
-    console.log(userToFind)
-    EModel.find({ username: userToFind }).then((exercises) => {
-      const entries = exercises.map((entry) => {
-        return {
-          description: entry.description,
-          duration: entry.duration,
-          date: entry.date.toDateString(),
-        };
+    let dateObj = { username: userToFind };
+    // if there are from/to parameters
+    if (from || to) {
+      dateObj.date = {};
+    }
+    if (from) {
+      dateObj.date["$gte"] = from;
+    }
+    if (to) {
+      dateObj.date["$lte"] = to;
+    }
+   // find exercise entries
+    EModel.find(dateObj)
+      .limit(limit)
+      .then((exercises) => {
+        const entries = exercises.map((entry) => {
+          return {
+            description: entry.description,
+            duration: entry.duration,
+            date: entry.date.toDateString(),
+          };
+        });
+        res.json({
+          username: userToFind,
+          count: exercises.length,
+          _id: id,
+          log: entries,
+        });
       });
-      res.json({
-        username: userToFind,
-        count: exercises.length,
-        _id: id,
-        log: entries,
-      });
-    });
   });
 });
 
